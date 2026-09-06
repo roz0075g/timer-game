@@ -39,7 +39,7 @@ import kotlin.random.Random
 private const val GAME_SECONDS = 30 * 60
 private const val SLOT_COUNT = 6
 
-private enum class SlotStatus { NONE, PENDING, SUCCESS, FAILURE }
+enum class SlotStatus { NONE, PENDING, SUCCESS, FAILURE }
 
 data class GameState(
     val elapsedSeconds: Int = 0,
