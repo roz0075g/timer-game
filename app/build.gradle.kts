@@ -16,37 +16,32 @@ android {
         versionName = providers.gradleProperty("versionName").orElse("1.0.3").get()
     }
 
+    val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+    val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+    val keyAliasValue = System.getenv("ANDROID_KEY_ALIAS")
+    val keyPasswordValue = System.getenv("ANDROID_KEY_PASSWORD")
+    val releaseSigningReady = !keystorePath.isNullOrBlank() &&
+        !keystorePassword.isNullOrBlank() &&
+        !keyAliasValue.isNullOrBlank() &&
+        !keyPasswordValue.isNullOrBlank()
+
     signingConfigs {
         create("release") {
-            val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-            val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            val keyAliasValue = System.getenv("ANDROID_KEY_ALIAS")
-            val keyPasswordValue = System.getenv("ANDROID_KEY_PASSWORD")
-
-            check(!keystorePath.isNullOrBlank()) {
-                "ANDROID_KEYSTORE_PATH is required for release builds"
+            if (releaseSigningReady) {
+                storeFile = file(keystorePath!!)
+                storePassword = keystorePassword
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
             }
-            check(!keystorePassword.isNullOrBlank()) {
-                "ANDROID_KEYSTORE_PASSWORD is required for release builds"
-            }
-            check(!keyAliasValue.isNullOrBlank()) {
-                "ANDROID_KEY_ALIAS is required for release builds"
-            }
-            check(!keyPasswordValue.isNullOrBlank()) {
-                "ANDROID_KEY_PASSWORD is required for release builds"
-            }
-
-            storeFile = file(keystorePath)
-            storePassword = keystorePassword
-            keyAlias = keyAliasValue
-            keyPassword = keyPasswordValue
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
