@@ -4,16 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      version_name:
-        description: 'Release version, for example 1.0.4'
-        required: true
-        type: string
-      version_code:
-        description: 'Android versionCode, for example 10004'
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -21,11 +11,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/timer-game-release.jks
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -46,28 +31,35 @@ jobs:
       - name: Restore release keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           test -n "$KEYSTORE_BASE64" || { echo "ANDROID_KEYSTORE_BASE64 is not configured"; exit 1; }
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
-          test -s "$ANDROID_KEYSTORE_PATH"
+          test -n "$KEYSTORE_PASSWORD" || { echo "ANDROID_KEYSTORE_PASSWORD is not configured"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "ANDROID_KEY_ALIAS is not configured"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "ANDROID_KEY_PASSWORD is not configured"; exit 1; }
+
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/timer-game-release.jks"
+          test -s "$RUNNER_TEMP/timer-game-release.jks"
+
+          {
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/timer-game-release.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
 
       - name: Resolve release version
         id: version
         env:
           TAG_NAME: ${{ github.ref_name }}
-          INPUT_VERSION_NAME: ${{ inputs.version_name }}
-          INPUT_VERSION_CODE: ${{ inputs.version_code }}
         run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            VERSION_NAME="${TAG_NAME#v}"
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
-            VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
-          else
-            VERSION_NAME="$INPUT_VERSION_NAME"
-            VERSION_CODE="$INPUT_VERSION_CODE"
-          fi
+          VERSION_NAME="${TAG_NAME#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
 
-          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid versionName: $VERSION_NAME"; exit 1; }
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid version tag: $TAG_NAME"; exit 1; }
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] || { echo "Invalid versionCode: $VERSION_CODE"; exit 1; }
 
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
@@ -91,14 +83,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION_NAME: ${{ steps.version.outputs.version_name }}
         run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            gh release create "$GITHUB_REF_NAME" \
-              app/build/outputs/apk/release/timer-game-release.apk \
-              --title "Timer Game v$VERSION_NAME" \
-              --generate-notes
-          else
-            echo "workflow_dispatch completed a signed build without creating a release"
-          fi
+          gh release create "$GITHUB_REF_NAME" \
+            app/build/outputs/apk/release/timer-game-release.apk \
+            --title "Timer Game v$VERSION_NAME" \
+            --generate-notes
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
