@@ -238,12 +238,6 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                         Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(formatTime(state.elapsedSeconds), style = MaterialTheme.typography.displayMedium)
                             Text(state.phase, style = MaterialTheme.typography.titleMedium)
-                            if (state.phase == "実行フェーズ") {
-                                Text(
-                                    currentPositionText(state),
-                                    style = MaterialTheme.typography.titleLarge
-                                )
-                            }
                             state.lastRoll?.let { Text("直近の出目: $it  →  ${it * 10 - 10}秒枠") }
                             Spacer(Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -268,9 +262,15 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {
                             Text(
-                                text = "${index * 10}–${index * 10 + 9}秒  ${if (index == state.currentSlot && state.phase == "実行フェーズ") "◀ 現在" else ""}",
+                                text = "${index * 10}–${index * 10 + 9}秒",
                                 style = MaterialTheme.typography.titleMedium
                             )
+                            if (currentMarker(index, state)) {
+                                Text(
+                                    "◀ 現在",
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
                             Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
                             Text("状態: ${statusLabel(status)}")
                             if (status == SlotStatus.PENDING && quota > 0) {
@@ -297,11 +297,8 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
     }
 }
 
-private fun currentPositionText(state: GameState): String {
-    val start = state.currentSlot * 10
-    val end = start + 9
-    return "現在位置: $start–$end秒枠"
-}
+internal fun currentMarker(index: Int, state: GameState): Boolean =
+    index == state.currentSlot && state.phase == "実行フェーズ"
 
 private fun formatTime(totalSeconds: Int): String {
     val minutes = totalSeconds / 60
