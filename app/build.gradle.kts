@@ -12,8 +12,8 @@ android {
         applicationId = "com.roz0075g.timergame"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.gradleProperty("versionCode").orElse("10500").get().toInt()
-        versionName = providers.gradleProperty("versionName").orElse("1.0.5").get()
+        versionCode = providers.gradleProperty("versionCode").orElse("10600").get().toInt()
+        versionName = providers.gradleProperty("versionName").orElse("1.0.6").get()
     }
 
     val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
