@@ -41,7 +41,7 @@ private const val SLOT_COUNT = 6
 
 private enum class SlotStatus { NONE, PENDING, SUCCESS, FAILURE }
 
-private data class GameState(
+data class GameState(
     val elapsedSeconds: Int = 0,
     val running: Boolean = false,
     val started: Boolean = false,
