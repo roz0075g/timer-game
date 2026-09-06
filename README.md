@@ -13,7 +13,8 @@ Android app built with Kotlin + Jetpack Compose.
 - Unprocessed quotas are recorded as failures when their time window ends
 - Pause, resume, reset, and final statistics
 - GitHub Actions builds a debug APK automatically
-- Tag-based GitHub Releases can build a fixed-key signed APK
+- GitHub Releases build a fixed-key signed APK
+- The app checks the public GitHub Release for newer versions
 
 ## Debug APK
 
@@ -32,8 +33,8 @@ Before creating the first release, configure these **repository Actions secrets*
 
 GitHub Actions secrets are encrypted and are only exposed to workflows that explicitly reference them.
 
-Create a release by pushing a tag such as `v1.0.4`. The release workflow derives `versionCode` from the tag (`1.0.4` → `10004`), runs unit tests, builds the signed APK, and attaches `timer-game-release.apk` to the GitHub Release.
+The current release is `v1.0.5`. Release version `1.0.5` uses versionCode `10500`. The release workflow runs the unit tests, builds the signed APK, and attaches `timer-game-release.apk` to the GitHub Release.
 
 **Important:** the existing debug APK is not the fixed-key release build. The first migration from the debug build to the signed release build may require uninstalling the debug app and installing the first signed release manually. After that, future releases must keep using the same keystore.
 
-The repository is intended to remain private.
+The repository is public so the app can check GitHub Releases without an embedded access token.
