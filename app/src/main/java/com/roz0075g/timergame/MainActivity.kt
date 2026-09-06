@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
@@ -211,24 +212,24 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
             Scaffold(
                 topBar = { TopAppBar(title = { Text("Timer Game") }) }
             ) { innerPadding ->
-                LazyColumn(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .consumeWindowInsets(innerPadding),
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        top = innerPadding.calculateTopPadding() + 16.dp,
-                        end = 16.dp,
-                        bottom = innerPadding.calculateBottomPadding() + 16.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .consumeWindowInsets(innerPadding)
+                        .padding(
+                            top = innerPadding.calculateTopPadding(),
+                            bottom = innerPadding.calculateBottomPadding()
+                        )
                 ) {
-                    item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 16.dp)
+                    ) {
                         Text("30分 累積タイマーゲーム", style = MaterialTheme.typography.headlineSmall)
                         Spacer(Modifier.height(4.dp))
                         Text("通常: 抽選→実行 / ハード: 毎分すぐ実行")
-                    }
-                    item {
+                        Spacer(Modifier.height(10.dp))
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("モード", style = MaterialTheme.typography.titleMedium)
@@ -239,8 +240,7 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                                 Text("選択中: ${if (state.mode == GameMode.HARD) "ハード" else "通常"}")
                             }
                         }
-                    }
-                    item {
+                        Spacer(Modifier.height(10.dp))
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(formatTime(state.elapsedSeconds), style = MaterialTheme.typography.displayMedium)
@@ -255,41 +255,54 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                             }
                         }
                     }
-                    item {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            Text("達成 ${state.successes}")
-                            Text("失敗 ${state.failures}")
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 16.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        item {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                Text("達成 ${state.successes}")
+                                Text("失敗 ${state.failures}")
+                            }
                         }
-                    }
-                    itemsIndexed(state.counts) { index, count ->
-                        val quota = count * 10
-                        val status = state.statuses[index]
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${index * 10}–${index * 10 + 9}秒", style = MaterialTheme.typography.titleMedium)
-                                    if (currentMarker(index, state)) {
-                                        Spacer(Modifier.padding(horizontal = 3.dp))
-                                        Text("◀ 現在", style = MaterialTheme.typography.bodyLarge)
+                        itemsIndexed(state.counts) { index, count ->
+                            val quota = count * 10
+                            val status = state.statuses[index]
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("${index * 10}–${index * 10 + 9}秒", style = MaterialTheme.typography.titleMedium)
+                                        if (currentMarker(index, state)) {
+                                            Spacer(Modifier.padding(horizontal = 3.dp))
+                                            Text("◀ 現在", style = MaterialTheme.typography.bodyLarge)
+                                        }
                                     }
-                                }
-                                Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
-                                Text("状態: ${statusLabel(status)}")
-                                if (status == SlotStatus.PENDING && quota > 0) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(onClick = { vm.markSuccess(index) }) { Text("達成") }
-                                        OutlinedButton(onClick = { vm.markFailure(index) }) { Text("失敗") }
+                                    Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
+                                    Text("状態: ${statusLabel(status)}")
+                                    if (status == SlotStatus.PENDING && quota > 0) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(onClick = { vm.markSuccess(index) }) { Text("達成") }
+                                            OutlinedButton(onClick = { vm.markFailure(index) }) { Text("失敗") }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    if (state.finished) {
-                        item {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(16.dp)) {
-                                    Text("ゲーム終了", style = MaterialTheme.typography.titleLarge)
-                                    Text("達成: ${state.successes} / 失敗: ${state.failures}")
+                        if (state.finished) {
+                            item {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(16.dp)) {
+                                        Text("ゲーム終了", style = MaterialTheme.typography.titleLarge)
+                                        Text("達成: ${state.successes} / 失敗: ${state.failures}")
+                                    }
                                 }
                             }
                         }
