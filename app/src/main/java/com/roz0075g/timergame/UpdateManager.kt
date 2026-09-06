@@ -16,12 +16,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.Locale
 
 private const val RELEASES_API = "https://api.github.com/repos/roz0075g/timer-game/releases/latest"
 private const val UPDATE_FILE_NAME = "timer-game-update.apk"
@@ -58,7 +59,7 @@ fun CheckForAppUpdate() {
                         if (downloading) return@Button
                         downloading = true
                         errorMessage = null
-                        kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
+                        CoroutineScope(Dispatchers.Main).launch {
                             runCatching { downloadAndInstall(context, info) }
                                 .onFailure { errorMessage = it.message ?: "更新に失敗しました" }
                             downloading = false
