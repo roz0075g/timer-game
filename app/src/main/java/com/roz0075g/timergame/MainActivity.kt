@@ -3,14 +3,16 @@ package com.roz0075g.timergame
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,8 +20,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -191,6 +195,7 @@ class GameViewModel : ViewModel() {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent { TimerGameApp() }
     }
 }
@@ -200,80 +205,89 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
-                    Text("30分 累積タイマーゲーム", style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(4.dp))
-                    Text("通常: 抽選→実行 / ハード: 毎分すぐ実行")
-                }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("モード", style = MaterialTheme.typography.titleMedium)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { vm.selectMode(GameMode.NORMAL) }, enabled = !state.started && state.mode != GameMode.NORMAL) { Text("通常") }
-                                Button(onClick = { vm.selectMode(GameMode.HARD) }, enabled = !state.started && state.mode != GameMode.HARD) { Text("ハード") }
-                            }
-                            Text("選択中: ${if (state.mode == GameMode.HARD) "ハード" else "通常"}")
-                        }
+            Scaffold(
+                topBar = { TopAppBar(title = { Text("Timer Game") }) }
+            ) { innerPadding ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .consumeWindowInsets(innerPadding),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = innerPadding.calculateTopPadding() + 16.dp,
+                        end = 16.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Text("30分 累積タイマーゲーム", style = MaterialTheme.typography.headlineSmall)
+                        Spacer(Modifier.height(4.dp))
+                        Text("通常: 抽選→実行 / ハード: 毎分すぐ実行")
                     }
-                }
-                item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(formatTime(state.elapsedSeconds), style = MaterialTheme.typography.displayMedium)
-                            Text(state.phase, style = MaterialTheme.typography.titleMedium)
-                            state.lastRoll?.let { Text("直近の出目: $it  →  ${it * 10 - 10}秒枠") }
-                            Spacer(Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = vm::startOrResume, enabled = !state.running && !state.finished) { Text(if (state.started) "再開" else "スタート") }
-                                OutlinedButton(onClick = vm::pause, enabled = state.running) { Text("一時停止") }
-                                OutlinedButton(onClick = vm::reset) { Text("リセット") }
-                            }
-                        }
-                    }
-                }
-                item {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        Text("達成 ${state.successes}")
-                        Text("失敗 ${state.failures}")
-                    }
-                }
-                itemsIndexed(state.counts) { index, count ->
-                    val quota = count * 10
-                    val status = state.statuses[index]
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("${index * 10}–${index * 10 + 9}秒", style = MaterialTheme.typography.titleMedium)
-                                if (currentMarker(index, state)) {
-                                    Spacer(Modifier.padding(horizontal = 3.dp))
-                                    Text("◀ 現在", style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-                            Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
-                            Text("状態: ${statusLabel(status)}")
-                            if (status == SlotStatus.PENDING && quota > 0) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(onClick = { vm.markSuccess(index) }) { Text("達成") }
-                                    OutlinedButton(onClick = { vm.markFailure(index) }) { Text("失敗") }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (state.finished) {
                     item {
                         Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text("ゲーム終了", style = MaterialTheme.typography.titleLarge)
-                                Text("達成: ${state.successes} / 失敗: ${state.failures}")
+                            Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("モード", style = MaterialTheme.typography.titleMedium)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = { vm.selectMode(GameMode.NORMAL) }, enabled = !state.started && state.mode != GameMode.NORMAL) { Text("通常") }
+                                    Button(onClick = { vm.selectMode(GameMode.HARD) }, enabled = !state.started && state.mode != GameMode.HARD) { Text("ハード") }
+                                }
+                                Text("選択中: ${if (state.mode == GameMode.HARD) "ハード" else "通常"}")
+                            }
+                        }
+                    }
+                    item {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(formatTime(state.elapsedSeconds), style = MaterialTheme.typography.displayMedium)
+                                Text(state.phase, style = MaterialTheme.typography.titleMedium)
+                                state.lastRoll?.let { Text("直近の出目: $it  →  ${it * 10 - 10}秒枠") }
+                                Spacer(Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = vm::startOrResume, enabled = !state.running && !state.finished) { Text(if (state.started) "再開" else "スタート") }
+                                    OutlinedButton(onClick = vm::pause, enabled = state.running) { Text("一時停止") }
+                                    OutlinedButton(onClick = vm::reset) { Text("リセット") }
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            Text("達成 ${state.successes}")
+                            Text("失敗 ${state.failures}")
+                        }
+                    }
+                    itemsIndexed(state.counts) { index, count ->
+                        val quota = count * 10
+                        val status = state.statuses[index]
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("${index * 10}–${index * 10 + 9}秒", style = MaterialTheme.typography.titleMedium)
+                                    if (currentMarker(index, state)) {
+                                        Spacer(Modifier.padding(horizontal = 3.dp))
+                                        Text("◀ 現在", style = MaterialTheme.typography.bodyLarge)
+                                    }
+                                }
+                                Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
+                                Text("状態: ${statusLabel(status)}")
+                                if (status == SlotStatus.PENDING && quota > 0) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = { vm.markSuccess(index) }) { Text("達成") }
+                                        OutlinedButton(onClick = { vm.markFailure(index) }) { Text("失敗") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (state.finished) {
+                        item {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text("ゲーム終了", style = MaterialTheme.typography.titleLarge)
+                                    Text("達成: ${state.successes} / 失敗: ${state.failures}")
+                                }
                             }
                         }
                     }
