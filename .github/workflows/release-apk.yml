@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to build, e.g. v1.0.4'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -53,15 +59,23 @@ jobs:
       - name: Resolve release version
         id: version
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          PUSH_TAG: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.release_tag }}
         run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG_NAME="$INPUT_TAG"
+          else
+            TAG_NAME="$PUSH_TAG"
+          fi
+
           VERSION_NAME="${TAG_NAME#v}"
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
           VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
 
-          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid version tag: $TAG_NAME"; exit 1; }
+          [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid release tag: $TAG_NAME"; exit 1; }
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]] || { echo "Invalid versionCode: $VERSION_CODE"; exit 1; }
 
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "Release version: $VERSION_NAME ($VERSION_CODE)"
@@ -78,15 +92,22 @@ jobs:
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/timer-game-release.apk
 
-      - name: Create GitHub Release
+      - name: Publish APK to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
           VERSION_NAME: ${{ steps.version.outputs.version_name }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            app/build/outputs/apk/release/timer-game-release.apk \
-            --title "Timer Game v$VERSION_NAME" \
-            --generate-notes
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" \
+              app/build/outputs/apk/release/timer-game-release.apk \
+              --clobber
+          else
+            gh release create "$TAG_NAME" \
+              app/build/outputs/apk/release/timer-game-release.apk \
+              --title "Timer Game v$VERSION_NAME" \
+              --generate-notes
+          fi
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
