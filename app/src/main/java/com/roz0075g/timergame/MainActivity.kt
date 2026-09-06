@@ -3,7 +3,6 @@ package com.roz0075g.timergame
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,18 +20,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.delay
-import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -63,8 +62,7 @@ class GameViewModel : ViewModel() {
     private var previousEvenSlot = -1
 
     fun startOrResume() {
-        if (_state.value.finished) return
-        if (_state.value.started && _state.value.running) return
+        if (_state.value.finished || _state.value.running) return
         if (!_state.value.started) {
             previousMinute = -1
             previousEvenSlot = -1
@@ -73,15 +71,13 @@ class GameViewModel : ViewModel() {
         tick()
         viewModelScope.launch {
             while (isActive && _state.value.running && !_state.value.finished) {
-                delay(200)
+                delay(1_000)
                 tick()
             }
         }
     }
 
-    fun pause() {
-        _state.value = _state.value.copy(running = false)
-    }
+    fun pause() { _state.value = _state.value.copy(running = false) }
 
     fun reset() {
         previousMinute = -1
@@ -124,14 +120,16 @@ class GameViewModel : ViewModel() {
                 )
                 previousEvenSlot = -1
             } else {
-                if (previousMinute >= 0 && s.statuses.any { it == SlotStatus.PENDING }) {
-                    next = failPending(next)
-                }
+                if (previousMinute >= 0) next = failPending(next)
                 val roll = Random.nextInt(1, 7)
                 val slot = roll - 1
                 val counts = next.counts.toMutableList()
                 counts[slot] += 1
-                next = next.copy(counts = counts, statuses = List(SLOT_COUNT) { SlotStatus.NONE }, lastRoll = roll)
+                next = next.copy(
+                    counts = counts,
+                    statuses = List(SLOT_COUNT) { SlotStatus.NONE },
+                    lastRoll = roll
+                )
             }
             previousMinute = minute
         }
