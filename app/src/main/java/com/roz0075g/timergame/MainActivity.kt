@@ -127,7 +127,6 @@ class GameViewModel : ViewModel() {
             if (executionPhase) {
                 if (!hardMode && previousMinute >= 0) next = failPending(next)
                 previousEvenSlot = -1
-
                 if (hardMode) {
                     val roll = Random.nextInt(1, 7)
                     val slot = roll - 1
@@ -135,15 +134,11 @@ class GameViewModel : ViewModel() {
                     counts[slot] += 1
                     next = next.copy(
                         counts = counts,
-                        statuses = List(SLOT_COUNT) { index ->
-                            if (index == slot) SlotStatus.PENDING else SlotStatus.NONE
-                        },
+                        statuses = List(SLOT_COUNT) { index -> if (index == slot) SlotStatus.PENDING else SlotStatus.NONE },
                         lastRoll = roll
                     )
                 } else {
-                    next = next.copy(
-                        statuses = next.counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE }
-                    )
+                    next = next.copy(statuses = next.counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE })
                 }
             } else {
                 if (previousMinute >= 0) next = failPending(next)
@@ -237,9 +232,7 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                             state.lastRoll?.let { Text("直近の出目: $it  →  ${it * 10 - 10}秒枠") }
                             Spacer(Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = vm::startOrResume, enabled = !state.running && !state.finished) {
-                                    Text(if (state.started) "再開" else "スタート")
-                                }
+                                Button(onClick = vm::startOrResume, enabled = !state.running && !state.finished) { Text(if (state.started) "再開" else "スタート") }
                                 OutlinedButton(onClick = vm::pause, enabled = state.running) { Text("一時停止") }
                                 OutlinedButton(onClick = vm::reset) { Text("リセット") }
                             }
@@ -257,12 +250,12 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                     val status = state.statuses[index]
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp)) {
-                            Text(
-                                text = "${index * 10}–${index * 10 + 9}秒",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            if (currentMarker(index, state)) {
-                                Text("◀ 現在", style = MaterialTheme.typography.titleLarge)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${index * 10}–${index * 10 + 9}秒", style = MaterialTheme.typography.titleMedium)
+                                if (currentMarker(index, state)) {
+                                    Spacer(Modifier.padding(horizontal = 3.dp))
+                                    Text("◀ 現在", style = MaterialTheme.typography.bodyLarge)
+                                }
                             }
                             Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
                             Text("状態: ${statusLabel(status)}")
@@ -290,8 +283,7 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
     }
 }
 
-internal fun currentMarker(index: Int, state: GameState): Boolean =
-    state.started && index == state.currentSlot
+internal fun currentMarker(index: Int, state: GameState): Boolean = state.started && index == state.currentSlot
 
 private fun formatTime(totalSeconds: Int): String {
     val minutes = totalSeconds / 60
