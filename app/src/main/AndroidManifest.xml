@@ -3,7 +3,8 @@
     <application
         android:allowBackup="true"
         android:label="Timer Game"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MainActivity"
             android:exported="true">
