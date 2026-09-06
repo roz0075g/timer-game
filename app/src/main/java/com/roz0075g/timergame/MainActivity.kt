@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -159,7 +160,6 @@ class GameViewModel : ViewModel() {
             previousMinute = minute
         }
 
-        // currentSlot is the on-screen time position, not the randomly selected quota slot.
         val currentTimeSlot = ((nextElapsed - 1) % 60 / 10).coerceIn(0, 5)
         if (executionPhase && !hardMode && previousEvenSlot >= 0 && currentTimeSlot > previousEvenSlot) {
             next = failSlotsBefore(next, currentTimeSlot)
@@ -206,7 +206,10 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 item {
@@ -259,10 +262,7 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                                 style = MaterialTheme.typography.titleMedium
                             )
                             if (currentMarker(index, state)) {
-                                Text(
-                                    "◀ 現在",
-                                    style = MaterialTheme.typography.titleLarge
-                                )
+                                Text("◀ 現在", style = MaterialTheme.typography.titleLarge)
                             }
                             Text("累積: ${count}回 / 今回のノルマ: ${if (quota == 0) "なし" else quota}")
                             Text("状態: ${statusLabel(status)}")
