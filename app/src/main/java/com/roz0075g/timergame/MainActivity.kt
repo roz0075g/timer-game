@@ -127,8 +127,6 @@ class GameViewModel : ViewModel() {
                 if (!hardMode && previousMinute >= 0) next = failPending(next)
                 previousEvenSlot = -1
 
-                // Hard mode has no separate draw phase: each minute immediately
-                // assigns one random slot and starts its quota for execution.
                 if (hardMode) {
                     val roll = Random.nextInt(1, 7)
                     val slot = roll - 1
@@ -165,8 +163,6 @@ class GameViewModel : ViewModel() {
 
         if (executionPhase) {
             val slot = if (hardMode) {
-                // In hard mode the current position is the slot selected at
-                // the start of this minute. Keep it even after marking success/failure.
                 next.currentSlot
             } else {
                 ((nextElapsed % 60) / 10).coerceIn(0, 5)
@@ -242,6 +238,12 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                         Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(formatTime(state.elapsedSeconds), style = MaterialTheme.typography.displayMedium)
                             Text(state.phase, style = MaterialTheme.typography.titleMedium)
+                            if (state.phase == "実行フェーズ") {
+                                Text(
+                                    currentPositionText(state),
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
                             state.lastRoll?.let { Text("直近の出目: $it  →  ${it * 10 - 10}秒枠") }
                             Spacer(Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -293,6 +295,12 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
             }
         }
     }
+}
+
+private fun currentPositionText(state: GameState): String {
+    val start = state.currentSlot * 10
+    val end = start + 9
+    return "現在位置: $start–$end秒枠"
 }
 
 private fun formatTime(totalSeconds: Int): String {
