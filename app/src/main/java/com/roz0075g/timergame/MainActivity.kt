@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
 private fun TimerGameApp(vm: GameViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     MaterialTheme {
+        CheckForAppUpdate()
         Surface(modifier = Modifier.fillMaxSize()) {
             Scaffold(
                 topBar = { TopAppBar(title = { Text("Timer Game") }) }
