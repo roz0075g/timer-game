@@ -130,7 +130,7 @@ class GameViewModel : ViewModel() {
 
         if (minute != previousMinute) {
             if (executionPhase) {
-                if (!hardMode && previousMinute >= 0) next = failPending(next)
+                if (previousMinute >= 0) next = failPending(next)
                 previousEvenSlot = -1
                 if (hardMode) {
                     val roll = Random.nextInt(1, 7)
@@ -139,7 +139,7 @@ class GameViewModel : ViewModel() {
                     counts[slot] += 1
                     next = next.copy(
                         counts = counts,
-                        statuses = List(SLOT_COUNT) { index -> if (index == slot) SlotStatus.PENDING else SlotStatus.NONE },
+                        statuses = counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE },
                         lastRoll = roll
                     )
                 } else {
@@ -161,10 +161,10 @@ class GameViewModel : ViewModel() {
         }
 
         val currentTimeSlot = ((nextElapsed - 1) % 60 / 10).coerceIn(0, 5)
-        if (executionPhase && !hardMode && previousEvenSlot >= 0 && currentTimeSlot > previousEvenSlot) {
+        if (executionPhase && previousEvenSlot >= 0 && currentTimeSlot > previousEvenSlot) {
             next = failSlotsBefore(next, currentTimeSlot)
         }
-        previousEvenSlot = if (executionPhase && !hardMode) currentTimeSlot else -1
+        previousEvenSlot = if (executionPhase) currentTimeSlot else -1
         next = next.copy(currentSlot = currentTimeSlot)
 
         if (nextElapsed >= GAME_SECONDS) {
