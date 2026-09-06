@@ -21,7 +21,7 @@ After a push to `main`, open **Actions → Build APK** and download the `timer-g
 
 ## Signed release APK
 
-Release builds use one fixed keystore so future APKs can update an already-installed release build. Android requires APKs to be signed with a compatible signing key, and the private key should be kept secure and backed up. citeturn0search0turn0search2
+Release builds use one fixed keystore so future APKs can update an already-installed release build. Android requires APKs to be signed with a compatible signing key, and the private key should be kept secure and backed up.
 
 Before creating the first release, configure these **repository Actions secrets**:
 
@@ -30,7 +30,7 @@ Before creating the first release, configure these **repository Actions secrets*
 - `ANDROID_KEY_ALIAS` — key alias
 - `ANDROID_KEY_PASSWORD` — key password
 
-GitHub Actions secrets are encrypted and are only exposed to workflows that explicitly reference them. citeturn1search0turn1search4
+GitHub Actions secrets are encrypted and are only exposed to workflows that explicitly reference them.
 
 Create a release by pushing a tag such as `v1.0.4`. The release workflow derives `versionCode` from the tag (`1.0.4` → `10004`), runs unit tests, builds the signed APK, and attaches `timer-game-release.apk` to the GitHub Release.
 
