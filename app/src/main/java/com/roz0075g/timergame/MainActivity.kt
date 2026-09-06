@@ -40,6 +40,7 @@ private const val GAME_SECONDS = 30 * 60
 private const val SLOT_COUNT = 6
 
 enum class SlotStatus { NONE, PENDING, SUCCESS, FAILURE }
+enum class GameMode { NORMAL, HARD }
 
 data class GameState(
     val elapsedSeconds: Int = 0,
@@ -52,7 +53,8 @@ data class GameState(
     val lastRoll: Int? = null,
     val successes: Int = 0,
     val failures: Int = 0,
-    val phase: String = "開始前"
+    val phase: String = "開始前",
+    val mode: GameMode = GameMode.NORMAL
 )
 
 class GameViewModel : ViewModel() {
@@ -60,6 +62,12 @@ class GameViewModel : ViewModel() {
     val state: StateFlow<GameState> = _state.asStateFlow()
     private var previousMinute = -1
     private var previousEvenSlot = -1
+
+    fun selectMode(mode: GameMode) {
+        val s = _state.value
+        if (s.started || s.running) return
+        _state.value = s.copy(mode = mode)
+    }
 
     fun startOrResume() {
         if (_state.value.finished || _state.value.running) return
@@ -105,20 +113,40 @@ class GameViewModel : ViewModel() {
         val s = _state.value
         if (!s.started || !s.running || s.finished) return
         val nextElapsed = (s.elapsedSeconds + 1).coerceAtMost(GAME_SECONDS)
-        val minute = nextElapsed / 60
+        val minute = (nextElapsed - 1) / 60
+        val hardMode = s.mode == GameMode.HARD
         val oddPhase = minute % 2 == 0
+        val executionPhase = hardMode || !oddPhase
         var next = s.copy(
             elapsedSeconds = nextElapsed,
-            phase = if (oddPhase) "抽選フェーズ" else "実行フェーズ"
+            phase = if (executionPhase) "実行フェーズ" else "抽選フェーズ"
         )
 
         if (minute != previousMinute) {
-            if (!oddPhase) {
-                next = next.copy(
-                    statuses = next.counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE },
-                    currentSlot = 0
-                )
+            if (executionPhase) {
+                if (!hardMode && previousMinute >= 0) next = failPending(next)
                 previousEvenSlot = -1
+
+                // Hard mode has no separate draw phase: each minute immediately
+                // assigns one random slot and starts its quota for execution.
+                if (hardMode) {
+                    val roll = Random.nextInt(1, 7)
+                    val slot = roll - 1
+                    val counts = next.counts.toMutableList()
+                    counts[slot] += 1
+                    next = next.copy(
+                        counts = counts,
+                        statuses = List(SLOT_COUNT) { index ->
+                            if (index == slot) SlotStatus.PENDING else SlotStatus.NONE
+                        },
+                        lastRoll = roll
+                    )
+                } else {
+                    next = next.copy(
+                        statuses = next.counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE },
+                        currentSlot = 0
+                    )
+                }
             } else {
                 if (previousMinute >= 0) next = failPending(next)
                 val roll = Random.nextInt(1, 7)
@@ -134,9 +162,13 @@ class GameViewModel : ViewModel() {
             previousMinute = minute
         }
 
-        if (!oddPhase) {
-            val slot = ((nextElapsed % 60) / 10).coerceIn(0, 5)
-            if (previousEvenSlot >= 0 && slot > previousEvenSlot) {
+        if (executionPhase) {
+            val slot = if (hardMode) {
+                next.statuses.indexOfFirst { it == SlotStatus.PENDING }.coerceAtLeast(0)
+            } else {
+                ((nextElapsed % 60) / 10).coerceIn(0, 5)
+            }
+            if (!hardMode && previousEvenSlot >= 0 && slot > previousEvenSlot) {
                 next = failSlotsBefore(next, slot)
             }
             previousEvenSlot = slot
@@ -188,7 +220,19 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
                 item {
                     Text("30分 累積タイマーゲーム", style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(4.dp))
-                    Text("奇数フェーズで自動抽選 → 偶数フェーズで10秒区切りのノルマを処理")
+                    Text("通常: 抽選→実行 / ハード: 毎分すぐ実行")
+                }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("モード", style = MaterialTheme.typography.titleMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { vm.selectMode(GameMode.NORMAL) }, enabled = !state.started && state.mode != GameMode.NORMAL) { Text("通常") }
+                                Button(onClick = { vm.selectMode(GameMode.HARD) }, enabled = !state.started && state.mode != GameMode.HARD) { Text("ハード") }
+                            }
+                            Text("選択中: ${if (state.mode == GameMode.HARD) "ハード" else "通常"}")
+                        }
+                    }
                 }
                 item {
                     Card(modifier = Modifier.fillMaxWidth()) {
