@@ -98,7 +98,7 @@ class GameViewModel : ViewModel() {
         if (!s.running || s.finished || s.statuses[slot] != SlotStatus.PENDING) return
         val statuses = s.statuses.toMutableList()
         statuses[slot] = SlotStatus.SUCCESS
-        _state.value = s.copy(statuses = statuses, successes = s.successes + 1)
+        _state.value = s.copy(statuses = statuses, successes = s.successes + 1, currentSlot = slot)
     }
 
     fun markFailure(slot: Int) {
@@ -106,7 +106,7 @@ class GameViewModel : ViewModel() {
         if (!s.running || s.finished || s.statuses[slot] != SlotStatus.PENDING) return
         val statuses = s.statuses.toMutableList()
         statuses[slot] = SlotStatus.FAILURE
-        _state.value = s.copy(statuses = statuses, failures = s.failures + 1)
+        _state.value = s.copy(statuses = statuses, failures = s.failures + 1, currentSlot = slot)
     }
 
     private fun tick() {
@@ -139,6 +139,7 @@ class GameViewModel : ViewModel() {
                         statuses = List(SLOT_COUNT) { index ->
                             if (index == slot) SlotStatus.PENDING else SlotStatus.NONE
                         },
+                        currentSlot = slot,
                         lastRoll = roll
                     )
                 } else {
@@ -164,7 +165,9 @@ class GameViewModel : ViewModel() {
 
         if (executionPhase) {
             val slot = if (hardMode) {
-                next.statuses.indexOfFirst { it == SlotStatus.PENDING }.coerceAtLeast(0)
+                // In hard mode the current position is the slot selected at
+                // the start of this minute. Keep it even after marking success/failure.
+                next.currentSlot
             } else {
                 ((nextElapsed % 60) / 10).coerceIn(0, 5)
             }
