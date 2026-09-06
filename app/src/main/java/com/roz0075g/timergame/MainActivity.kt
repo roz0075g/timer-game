@@ -98,7 +98,7 @@ class GameViewModel : ViewModel() {
         if (!s.running || s.finished || s.statuses[slot] != SlotStatus.PENDING) return
         val statuses = s.statuses.toMutableList()
         statuses[slot] = SlotStatus.SUCCESS
-        _state.value = s.copy(statuses = statuses, successes = s.successes + 1, currentSlot = slot)
+        _state.value = s.copy(statuses = statuses, successes = s.successes + 1)
     }
 
     fun markFailure(slot: Int) {
@@ -106,7 +106,7 @@ class GameViewModel : ViewModel() {
         if (!s.running || s.finished || s.statuses[slot] != SlotStatus.PENDING) return
         val statuses = s.statuses.toMutableList()
         statuses[slot] = SlotStatus.FAILURE
-        _state.value = s.copy(statuses = statuses, failures = s.failures + 1, currentSlot = slot)
+        _state.value = s.copy(statuses = statuses, failures = s.failures + 1)
     }
 
     private fun tick() {
@@ -137,13 +137,11 @@ class GameViewModel : ViewModel() {
                         statuses = List(SLOT_COUNT) { index ->
                             if (index == slot) SlotStatus.PENDING else SlotStatus.NONE
                         },
-                        currentSlot = slot,
                         lastRoll = roll
                     )
                 } else {
                     next = next.copy(
-                        statuses = next.counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE },
-                        currentSlot = 0
+                        statuses = next.counts.map { if (it > 0) SlotStatus.PENDING else SlotStatus.NONE }
                     )
                 }
             } else {
@@ -161,18 +159,13 @@ class GameViewModel : ViewModel() {
             previousMinute = minute
         }
 
-        if (executionPhase) {
-            val slot = if (hardMode) {
-                next.currentSlot
-            } else {
-                ((nextElapsed % 60) / 10).coerceIn(0, 5)
-            }
-            if (!hardMode && previousEvenSlot >= 0 && slot > previousEvenSlot) {
-                next = failSlotsBefore(next, slot)
-            }
-            previousEvenSlot = slot
-            next = next.copy(currentSlot = slot)
+        // currentSlot is the on-screen time position, not the randomly selected quota slot.
+        val currentTimeSlot = ((nextElapsed - 1) % 60 / 10).coerceIn(0, 5)
+        if (executionPhase && !hardMode && previousEvenSlot >= 0 && currentTimeSlot > previousEvenSlot) {
+            next = failSlotsBefore(next, currentTimeSlot)
         }
+        previousEvenSlot = if (executionPhase && !hardMode) currentTimeSlot else -1
+        next = next.copy(currentSlot = currentTimeSlot)
 
         if (nextElapsed >= GAME_SECONDS) {
             next = failPending(next).copy(running = false, finished = true, phase = "ゲーム終了")
@@ -298,7 +291,7 @@ private fun TimerGameApp(vm: GameViewModel = viewModel()) {
 }
 
 internal fun currentMarker(index: Int, state: GameState): Boolean =
-    index == state.currentSlot && state.phase == "実行フェーズ"
+    state.started && index == state.currentSlot
 
 private fun formatTime(totalSeconds: Int): String {
     val minutes = totalSeconds / 60
