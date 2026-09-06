@@ -154,13 +154,16 @@ class GameViewModelTest {
     }
 
     @Test
-    fun currentPositionText_reflectsCurrentSlot() {
+    fun currentMarker_isShownOnlyForCurrentExecutionSlot() {
         val state = GameState(
             phase = "実行フェーズ",
             currentSlot = 3,
             running = true,
             started = true
         )
-        assertEquals("現在位置: 30–39秒枠", currentPositionText(state))
+
+        assertTrue(currentMarker(3, state))
+        assertFalse(currentMarker(2, state))
+        assertFalse(currentMarker(3, state.copy(phase = "抽選フェーズ")))
     }
 }
