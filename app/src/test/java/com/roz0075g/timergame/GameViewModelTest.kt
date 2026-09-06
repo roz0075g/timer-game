@@ -40,9 +40,7 @@ class GameViewModelTest {
     @Test
     fun modeCanBeChangedBeforeStart() {
         val vm = GameViewModel()
-
         vm.selectMode(GameMode.HARD)
-
         assertEquals(GameMode.HARD, vm.state.value.mode)
     }
 
@@ -51,10 +49,8 @@ class GameViewModelTest {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
-
         vm.selectMode(GameMode.NORMAL)
         vm.pause()
-
         assertEquals(GameMode.HARD, vm.state.value.mode)
     }
 
@@ -82,7 +78,6 @@ class GameViewModelTest {
     fun hardMode_startsImmediatelyInExecutionPhase() {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
-
         vm.startOrResume()
         vm.pause()
 
@@ -97,7 +92,6 @@ class GameViewModelTest {
     fun hardMode_hasExactlyOnePendingCurrentSlot() {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
-
         vm.startOrResume()
         vm.pause()
 
@@ -117,11 +111,9 @@ class GameViewModelTest {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
-
         val before = vm.state.value
         val current = before.currentSlot
         assertEquals(SlotStatus.PENDING, before.statuses[current])
-
         vm.markSuccess(current)
         vm.pause()
 
@@ -136,7 +128,6 @@ class GameViewModelTest {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
-
         val before = vm.state.value
         val current = before.currentSlot
         vm.markFailure(current)
@@ -153,7 +144,6 @@ class GameViewModelTest {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
-
         val current = vm.state.value.currentSlot
         vm.markSuccess(current)
         vm.markSuccess(current)
@@ -161,5 +151,16 @@ class GameViewModelTest {
 
         assertEquals(1, vm.state.value.successes)
         assertNotEquals(SlotStatus.PENDING, vm.state.value.statuses[current])
+    }
+
+    @Test
+    fun currentPositionText_reflectsCurrentSlot() {
+        val state = GameState(
+            phase = "実行フェーズ",
+            currentSlot = 3,
+            running = true,
+            started = true
+        )
+        assertEquals("現在位置: 30–39秒枠", currentPositionText(state))
     }
 }
