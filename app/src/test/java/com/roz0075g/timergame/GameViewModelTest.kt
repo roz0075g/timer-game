@@ -86,10 +86,11 @@ class GameViewModelTest {
         assertEquals("実行フェーズ", state.phase)
         assertNotNull(state.lastRoll)
         assertTrue(state.lastRoll in 1..6)
+        assertEquals(0, state.currentSlot)
     }
 
     @Test
-    fun hardMode_hasExactlyOnePendingCurrentSlot() {
+    fun hardMode_hasExactlyOnePendingRandomTarget() {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
@@ -101,9 +102,27 @@ class GameViewModelTest {
             .map { it.index }
 
         assertEquals(1, pendingSlots.size)
-        assertEquals(pendingSlots.single(), state.currentSlot)
-        assertEquals(state.lastRoll!! - 1, state.currentSlot)
-        assertTrue(state.counts[state.currentSlot] >= 1)
+        assertEquals(pendingSlots.single(), state.lastRoll!! - 1)
+        assertEquals(0, state.currentSlot)
+        assertTrue(state.counts[pendingSlots.single()] >= 1)
+    }
+
+    @Test
+    fun currentPosition_movesWithElapsedTime() {
+        val vm = GameViewModel()
+        vm.selectMode(GameMode.HARD)
+        vm.startOrResume()
+        vm.pause()
+
+        assertEquals(1, vm.state.value.elapsedSeconds)
+        assertEquals(0, vm.state.value.currentSlot)
+
+        vm.startOrResume()
+        Thread.sleep(10)
+        vm.pause()
+        // The position is derived from elapsed time; the exact next tick is asynchronous.
+        val state = vm.state.value
+        assertEquals(((state.elapsedSeconds - 1) % 60) / 10, state.currentSlot)
     }
 
     @Test
@@ -112,14 +131,14 @@ class GameViewModelTest {
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
         val before = vm.state.value
-        val current = before.currentSlot
-        assertEquals(SlotStatus.PENDING, before.statuses[current])
-        vm.markSuccess(current)
+        val target = before.lastRoll!! - 1
+        assertEquals(SlotStatus.PENDING, before.statuses[target])
+        vm.markSuccess(target)
         vm.pause()
 
         val after = vm.state.value
-        assertEquals(current, after.currentSlot)
-        assertEquals(SlotStatus.SUCCESS, after.statuses[current])
+        assertEquals(before.currentSlot, after.currentSlot)
+        assertEquals(SlotStatus.SUCCESS, after.statuses[target])
         assertEquals(1, after.successes)
     }
 
@@ -129,13 +148,13 @@ class GameViewModelTest {
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
         val before = vm.state.value
-        val current = before.currentSlot
-        vm.markFailure(current)
+        val target = before.lastRoll!! - 1
+        vm.markFailure(target)
         vm.pause()
 
         val after = vm.state.value
-        assertEquals(current, after.currentSlot)
-        assertEquals(SlotStatus.FAILURE, after.statuses[current])
+        assertEquals(before.currentSlot, after.currentSlot)
+        assertEquals(SlotStatus.FAILURE, after.statuses[target])
         assertEquals(1, after.failures)
     }
 
@@ -144,26 +163,28 @@ class GameViewModelTest {
         val vm = GameViewModel()
         vm.selectMode(GameMode.HARD)
         vm.startOrResume()
-        val current = vm.state.value.currentSlot
-        vm.markSuccess(current)
-        vm.markSuccess(current)
+        val target = vm.state.value.lastRoll!! - 1
+        vm.markSuccess(target)
+        vm.markSuccess(target)
         vm.pause()
 
         assertEquals(1, vm.state.value.successes)
-        assertNotEquals(SlotStatus.PENDING, vm.state.value.statuses[current])
+        assertNotEquals(SlotStatus.PENDING, vm.state.value.statuses[target])
     }
 
     @Test
-    fun currentMarker_isShownOnlyForCurrentExecutionSlot() {
+    fun currentMarker_reflectsCurrentSlot_evenAfterSuccess() {
         val state = GameState(
-            phase = "実行フェーズ",
             currentSlot = 3,
-            running = true,
-            started = true
+            started = true,
+            phase = "実行フェーズ"
         )
-
         assertTrue(currentMarker(3, state))
         assertFalse(currentMarker(2, state))
-        assertFalse(currentMarker(3, state.copy(phase = "抽選フェーズ")))
+
+        val completed = state.copy(statuses = List(6) { index ->
+            if (index == 3) SlotStatus.SUCCESS else SlotStatus.NONE
+        })
+        assertTrue(currentMarker(3, completed))
     }
 }
